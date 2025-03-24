@@ -3,13 +3,15 @@ from __future__ import annotations
 import motor.motor_asyncio as motor
 import bson
 
-from pydantic import ConfigDict, BaseModel, Field
+from pydantic import ConfigDict, BaseModel, Field, PlainSerializer
 from pydantic.functional_validators import BeforeValidator
 
 import typing
 
 
-ObjectId = typing.Annotated[bson.ObjectId, BeforeValidator(bson.ObjectId)]
+ObjectId = typing.Annotated[bson.ObjectId,
+                            BeforeValidator(bson.ObjectId),
+                            PlainSerializer(lambda x: str(x), return_type=str, when_used='json')]
 
 
 class DatabaseException(Exception):
