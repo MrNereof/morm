@@ -1,0 +1,31 @@
+[project]
+name = "morm"
+version = "0.1.0"
+description = "Asynchronous Mongo ORM"
+authors = [
+    {name = "MrNereof",email = "mrnereof@gmail.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "pydantic (>=2.10.6,<3.0.0)",
+    "motor (>=3.7.0,<4.0.0)",
+]
+
+[tool.poetry]
+packages = [{include = "morm"}]
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.3.5"
+mongomock-motor = "^0.0.35"
+pytest-asyncio = "^0.25.3"
+pytest-mock = "^3.14.0"
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
