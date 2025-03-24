@@ -5,6 +5,7 @@ import bson
 
 from pydantic import ConfigDict, BaseModel, Field, PlainSerializer, WithJsonSchema, BeforeValidator
 
+from contextlib import asynccontextmanager
 import typing
 
 
@@ -36,6 +37,12 @@ class Database:
     def __call__(self, cls):
         cls._db = self.db
         return cls
+
+    @asynccontextmanager
+    async def transaction(self):
+        async with await self.client.start_session() as s:
+            async with s.start_transaction():
+                yield
 
 
 class Model(BaseModel):
