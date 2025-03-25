@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 import motor.motor_asyncio as motor
 import bson
 
@@ -29,13 +31,19 @@ class AlreadyExists(DatabaseException):
         super().__init__("Object of model already exists")
 
 
+class DuplicateKeyError(DatabaseException):
+    def __init__(self, message: str):
+        super().__init__("Keated")
+
+
 class Database:
     def __init__(self, *args, name: typing.Optional[str] = None, **kwargs):
         self.client = motor.AsyncIOMotorClient(*args, **kwargs)
         self.db = self.client.get_database(name)
 
-    def __call__(self, cls):
+    def __call__(self, cls: typing.Type[Model]):
         cls._db = self.db
+        cls.setup()
         return cls
 
     @asynccontextmanager
@@ -45,9 +53,19 @@ class Database:
                 yield
 
 
+class Index:
+    def __init__(self, *indexes: str | tuple[str, typing.Any], **params):
+        self.indexes = indexes
+        self.params = params
+
+    async def create_index(self, model: Model):
+        await model.collection().create_index(self.indexes, **self.params)
+
+
 class Model(BaseModel):
     class Meta:
         COLLECTION_NAME: str
+        INDEXES: list[Index]
 
     _db: typing.ClassVar[motor.AsyncIOMotorDatabase]
     _collection: typing.ClassVar[motor.AsyncIOMotorCollection]
@@ -76,6 +94,11 @@ class Model(BaseModel):
             cls._collection = cls.db().get_collection(cls.collection_name())
 
         return cls._collection
+
+    @classmethod
+    def setup(cls):
+        for i in getattr(cls.Meta, "INDEXES", []):
+            asyncio.run(i.create_index(cls))
 
     def __hash__(self):
         return self.id.__hash__()

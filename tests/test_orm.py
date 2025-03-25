@@ -1,8 +1,9 @@
+import asyncio
+
 from mongomock_motor import AsyncMongoMockClient
-import pytest_asyncio
 import pytest
 
-from morm import Database, Model, ObjectId, DoesNotExist, AlreadyExists
+from morm import Database, Model, Index, DoesNotExist, AlreadyExists, DuplicateKeyError, ASC
 
 
 @pytest.fixture()
@@ -27,7 +28,7 @@ def test_database_decorator(mocker, mock_mongoclient):
     db = Database("test", name="fd", hello="World!")
 
     @db
-    class Test:
+    class Test(Model):
         pass
 
     assert hasattr(Test, "_db")
@@ -47,19 +48,19 @@ async def setup_database(db: Database):
     return TestModel
 
 
-def test_model_collection_name_unset():
-    class TestModel(Model):
-        pass
-
-    assert TestModel.collection_name() == "testmodel"
-
-
 def test_model_collection_name_set():
     class TestModel(Model):
         class Meta:
             COLLECTION_NAME = "helloworld"
 
     assert TestModel.collection_name() == "helloworld"
+
+
+def test_model_collection_name_unset():
+    class TestModel(Model):
+        pass
+
+    assert TestModel.collection_name() == "testmodel"
 
 
 def test_model_with_db(mocker, mock_mongoclient):
@@ -322,3 +323,20 @@ async def test_model_get_or_create_create(mock_mongoclient):
 
     assert created is True
     assert obj.name == "Test" and obj.num == 1
+
+
+def test_model_indexes(mock_mongoclient):
+    db = Database(name="test")
+
+    @db
+    class TestModel(Model):
+        class Meta:
+            INDEXES = [Index(("name", ASC), unique=True)]
+
+        name: str
+
+    with pytest.raises(DuplicateKeyError):
+        asyncio.run(TestModel(name="Test").create())
+        asyncio.run(TestModel(name="Test").create())
+
+    assert asyncio.run(TestModel.collection().index_information()) == {'_id_': {'key': [('_id', 1)], 'v': 2}, 'name_1': {'key': (('name', 1),), 'unique': True, 'v': 2}}
