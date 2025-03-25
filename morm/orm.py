@@ -77,13 +77,12 @@ class Database:
 
         return cls
 
-    async def __aenter__(self):
+    @asynccontextmanager
+    async def setup(self, *args, **kwargs):
         for coro in self._jobs:
             await coro
-        return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        pass
+        yield
 
     def register_job(self, coro: typing.Coroutine):
         self._jobs.append(coro)
