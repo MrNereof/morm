@@ -31,11 +31,6 @@ class AlreadyExists(DatabaseException):
         super().__init__("Object of model already exists")
 
 
-class DuplicateKeyError(DatabaseException):
-    def __init__(self, message: str):
-        super().__init__("Keated")
-
-
 class Database:
     def __init__(self, *args, name: typing.Optional[str] = None, **kwargs):
         self.client = motor.AsyncIOMotorClient(*args, **kwargs)
