@@ -65,13 +65,28 @@ class Database:
         self.client = motor.AsyncIOMotorClient(*args, **kwargs)
         self.db = self.client.get_database(name)
 
+        self._jobs = []
+
     def __call__(self, cls: typing.Type[Model]):
         if not issubclass(cls, Model):
             raise TypeError("Provided class must be subclass of Model")
 
         cls._db = self.db
-        cls.setup()
+        for i in cls.indexes():
+            self.register_job(i.create_index(cls))
+
         return cls
+
+    async def __aenter__(self):
+        for coro in self._jobs:
+            await coro
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+    def register_job(self, coro: typing.Coroutine):
+        self._jobs.append(coro)
 
     @asynccontextmanager
     async def transaction(self):
@@ -126,9 +141,9 @@ class Model(BaseModel):
         return cls._collection
 
     @classmethod
-    def setup(cls):
+    def indexes(cls):
         for i in getattr(cls.Meta, "INDEXES", []):
-            asyncio.run(i.create_index(cls))
+            yield i
 
     def __hash__(self):
         return self.id.__hash__()
