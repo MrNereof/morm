@@ -77,10 +77,13 @@ class Database:
 
         return cls
 
-    @asynccontextmanager
-    async def setup(self, *args, **kwargs):
+    async def setup(self):
         for coro in self._jobs:
             await coro
+
+    @asynccontextmanager
+    async def lifespan(self, *args, **kwargs):
+        await self.setup()
 
         yield
 
