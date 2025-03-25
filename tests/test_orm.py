@@ -25,7 +25,7 @@ def test_database_decorator(mocker, mock_mongoclient):
     mock_db = mocker.Mock()
     mocker.patch('motor.motor_asyncio.AsyncIOMotorClient.get_database', return_value=mock_db)
 
-    db = Database("test", name="fd", hello="World!")
+    db = Database(name="test")
 
     @db
     class Test(Model):
@@ -35,17 +35,13 @@ def test_database_decorator(mocker, mock_mongoclient):
     assert getattr(Test, "_db", None) == mock_db
 
 
-async def setup_database(db: Database):
-    @db
-    class TestModel(Model):
-        name: str
-        num: int
+def test_database_decorator_not_model():
+    db = Database(name="test")
 
-    await TestModel(name="Test", num=1).create()
-    await TestModel(name="Hello World", num=2).create()
-    await TestModel(name="John Doe", num=2).create()
-
-    return TestModel
+    with pytest.raises(TypeError):
+        @db
+        class Test:
+            pass
 
 
 def test_model_collection_name_set():

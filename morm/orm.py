@@ -37,6 +37,9 @@ class Database:
         self.db = self.client.get_database(name)
 
     def __call__(self, cls: typing.Type[Model]):
+        if not issubclass(cls, Model):
+            raise TypeError("Provided class must be subclass of Model")
+
         cls._db = self.db
         cls.setup()
         return cls
