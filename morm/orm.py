@@ -82,7 +82,10 @@ class Database:
 
 class Index:
     def __init__(self, *indexes: str | tuple[str, typing.Any], **params):
-        self.indexes = indexes
+        if len(indexes) == 1:
+            self.indexes = indexes[0]
+        else:
+            self.indexes = indexes
         self.params = params
 
     async def create_index(self, model: Model):
