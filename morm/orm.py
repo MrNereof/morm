@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 
 import motor.motor_asyncio as motor
 import bson
@@ -95,6 +96,14 @@ class Database:
         async with await self.client.start_session() as s:
             async with s.start_transaction():
                 yield
+
+    def atomic(self, func):
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            with self.transaction():
+                return await func(*args, **kwargs)
+
+        return wrapper
 
 
 class Index:
