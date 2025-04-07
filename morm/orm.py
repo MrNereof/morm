@@ -93,7 +93,7 @@ class Database:
     def atomic(self, func):
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
-            with self.transaction():
+            async with self.transaction():
                 return await func(*args, **kwargs)
 
         return wrapper

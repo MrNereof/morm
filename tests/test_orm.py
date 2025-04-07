@@ -8,7 +8,7 @@ from morm import Database, Model, Index, DoesNotExist, AlreadyExists, DuplicateK
 
 @pytest.fixture()
 def mock_mongoclient(mocker):
-    mocker.patch('motor.motor_asyncio.AsyncIOMotorClient', AsyncMongoMockClient)
+    return mocker.patch('motor.motor_asyncio.AsyncIOMotorClient', AsyncMongoMockClient)
 
 
 def test_database_init(mocker):
@@ -35,13 +35,39 @@ def test_database_decorator(mocker, mock_mongoclient):
     assert getattr(Test, "_db", None) == mock_db
 
 
-def test_database_decorator_not_model():
+def test_database_decorator_not_model(mock_mongoclient):
     db = Database(name="test")
 
     with pytest.raises(TypeError):
         @db
         class Test:
             pass
+
+
+def test_database_transaction(mocker):
+    mock_mongo_instance = mocker.AsyncMock()
+    mock_mongo_session = mocker.AsyncMock()
+    transaction = mocker.AsyncMock()
+    transaction.__aenter__ = mocker.AsyncMock()
+    mock_mongo_session.start_transaction = mocker.Mock(return_value=transaction)
+    mock_mongo_session_with = mocker.AsyncMock()
+    mock_mongo_session_with.__aenter__ = mocker.AsyncMock(return_value=mock_mongo_session)
+    mock_mongo_instance.start_session = mocker.AsyncMock(return_value=mock_mongo_session_with)
+    mocker.patch('motor.motor_asyncio.AsyncIOMotorClient', return_value=mock_mongo_instance)
+
+    db = Database(name="test")
+
+    @db.atomic
+    async def some_function():
+        pass
+
+    asyncio.run(some_function())
+
+    mock_mongo_instance.start_session.assert_awaited_once()
+    mock_mongo_session_with.__aenter__.assert_called_once()
+
+    mock_mongo_session.start_transaction.assert_called_once()
+    transaction.__aenter__.assert_called_once()
 
 
 def test_model_collection_name_set():
