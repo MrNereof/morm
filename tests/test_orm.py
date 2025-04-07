@@ -331,8 +331,10 @@ def test_model_indexes(mock_mongoclient):
 
         name: str
 
+    asyncio.run(db.setup())
+    asyncio.run(TestModel(name="Test").create())
     with pytest.raises(DuplicateKeyError):
         asyncio.run(TestModel(name="Test").create())
-        asyncio.run(TestModel(name="Test").create())
 
-    assert asyncio.run(TestModel.collection().index_information()) == {'_id_': {'key': [('_id', 1)], 'v': 2}, 'name_1': {'key': (('name', 1),), 'unique': True, 'v': 2}}
+    assert asyncio.run(TestModel.collection().index_information()) == {'_id_': {'key': [('_id', 1)], 'v': 2}, 'name_1': {'key': [('name', 1),], 'unique': True, 'v': 2}}
+    assert asyncio.run(TestModel.count(name="Test")) == 1

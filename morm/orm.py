@@ -81,12 +81,6 @@ class Database:
         for coro in self._jobs:
             await coro
 
-    @asynccontextmanager
-    async def lifespan(self, *args, **kwargs):
-        await self.setup()
-
-        yield
-
     def register_job(self, coro: typing.Coroutine):
         self._jobs.append(coro)
 
@@ -107,10 +101,10 @@ class Database:
 
 class Index:
     def __init__(self, *indexes: str | tuple[str, typing.Any], **params):
-        if len(indexes) == 1:
+        if len(indexes) == 1 and isinstance(indexes[0], str):
             self.indexes = indexes[0]
         else:
-            self.indexes = indexes
+            self.indexes = list(indexes)
         self.params = params
 
     async def create_index(self, model: Model):
