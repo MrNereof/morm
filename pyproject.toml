@@ -1,5 +1,5 @@
 [project]
-name = "morm"
+name = "morm-python"
 version = "0.1.0"
 description = "Asynchronous Mongo ORM"
 authors = [
