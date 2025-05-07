@@ -70,6 +70,16 @@ def test_database_transaction(mocker):
     transaction.__aenter__.assert_called_once()
 
 
+def test_database_grid_fs(mock_mongoclient, mocker):
+    mock_grid = mocker.Mock()
+    mock = mocker.patch('motor.motor_asyncio.AsyncIOMotorGridFSBucket', return_value=mock_grid)
+
+    db = Database(name="test")
+
+    assert db.grid_fs == mock_grid
+    mock.assert_called_once_with(db.db)
+
+
 def test_model_collection_name_set():
     class TestModel(Model):
         class Meta:

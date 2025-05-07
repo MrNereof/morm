@@ -66,6 +66,7 @@ class Database:
         self.db = self.client.get_database(name)
 
         self._jobs = []
+        self._grid_fs = None
 
     def __call__(self, cls: typing.Type[Model]):
         if not issubclass(cls, Model):
@@ -97,6 +98,12 @@ class Database:
                 return await func(*args, **kwargs)
 
         return wrapper
+
+    @property
+    def grid_fs(self) -> motor.AsyncIOMotorGridFSBucket:
+        if self._grid_fs is None:
+            self._grid_fs = motor.AsyncIOMotorGridFSBucket(self.db)
+        return self._grid_fs
 
 
 class Index:
