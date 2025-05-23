@@ -153,8 +153,7 @@ class Model(BaseModel):
 
     @classmethod
     def indexes(cls):
-        for i in getattr(cls.Meta, "INDEXES", []):
-            yield i
+        return getattr(cls.Meta, "INDEXES", [])
 
     def __hash__(self):
         return self.id.__hash__()
