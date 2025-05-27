@@ -170,7 +170,7 @@ class Model(BaseModel):
         if hasattr(cls, "_db"):
             return cls._db
 
-        raise RuntimeError(f"No Database connected!")
+        raise RuntimeError("No Database connected!")
 
     @classmethod
     def collection(cls) -> motor.AsyncIOMotorCollection:
