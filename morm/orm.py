@@ -1,16 +1,24 @@
 from __future__ import annotations
 
 import functools
+import typing
+from contextlib import asynccontextmanager
 
-import motor.motor_asyncio as motor
 import bson
-
-from pydantic import ConfigDict, BaseModel, Field, PlainSerializer, WithJsonSchema, BeforeValidator
+import motor.motor_asyncio as motor
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    PlainSerializer,
+    PrivateAttr,
+    WithJsonSchema,
+)
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema
 
-from contextlib import asynccontextmanager
-import typing
+from morm.utils import recursive_diff
 
 
 class ObjectIdAnnotation:
@@ -26,7 +34,9 @@ class ObjectIdAnnotation:
         raise ValueError("Invalid ObjectId")
 
     @classmethod
-    def __get_pydantic_core_schema__(cls, source_type, _handler) -> core_schema.CoreSchema:
+    def __get_pydantic_core_schema__(
+        cls, source_type, _handler
+    ) -> core_schema.CoreSchema:
         assert source_type is bson.ObjectId
         return core_schema.no_info_wrap_validator_function(
             cls.validate_object_id,
@@ -39,11 +49,13 @@ class ObjectIdAnnotation:
         return handler(core_schema.str_schema())
 
 
-ObjectId = typing.Annotated[bson.ObjectId,
-                            BeforeValidator(bson.ObjectId),
-                            PlainSerializer(lambda x: str(x), return_type=str, when_used='json'),
-                            WithJsonSchema({"type": "string"}, mode="serialization"),
-                            ObjectIdAnnotation]
+ObjectId = typing.Annotated[
+    bson.ObjectId,
+    BeforeValidator(bson.ObjectId),
+    PlainSerializer(lambda x: str(x), return_type=str, when_used="json"),
+    WithJsonSchema({"type": "string"}, mode="serialization"),
+    ObjectIdAnnotation,
+]
 
 
 class DatabaseException(Exception):
@@ -126,12 +138,28 @@ class Model(BaseModel):
     _db: typing.ClassVar[motor.AsyncIOMotorDatabase]
     _collection: typing.ClassVar[motor.AsyncIOMotorCollection]
 
-    id: typing.Optional[ObjectId] = Field(alias='_id', default=None)
+    _state_snapshot: typing.Optional[dict[str, typing.Any]] = PrivateAttr(default=None)
+
+    id: typing.Optional[ObjectId] = Field(alias="_id", default=None)
 
     model_config = ConfigDict(
         populate_by_name=True,
         arbitrary_types_allowed=True,
     )
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._take_snapshot()
+
+    def _make_dump(self):
+        return self.model_dump(by_alias=True, exclude={"id"})
+
+    def _take_snapshot(self):
+        self._state_snapshot = self._make_dump()
+
+    def _get_state_diff(self):
+        state = self._make_dump()
+        return recursive_diff(self._state_snapshot, state)
 
     @classmethod
     def collection_name(cls) -> str:
@@ -160,10 +188,10 @@ class Model(BaseModel):
 
     @classmethod
     async def get(cls, **params) -> typing.Optional[typing.Self]:
-        _id = params.pop('id', None)
+        _id = params.pop("id", None)
 
         if _id is not None:
-            params['_id'] = _id
+            params["_id"] = _id
 
         obj = await cls.collection().find_one(params)
         if not obj:
@@ -184,15 +212,27 @@ class Model(BaseModel):
     async def create(self) -> typing.Self:
         if self.id:
             raise AlreadyExists
-        new = await self.collection().insert_one(self.model_dump(by_alias=True, exclude={"id"}))
-        return await self.get(id=new.inserted_id)
+        data = self._make_dump()
+        new = await self.collection().insert_one(data)
+        self.id = new.inserted_id
+        self._take_snapshot()
+        return self
 
     async def save(self) -> typing.Self:
         try:
             return await self.create()
         except AlreadyExists:
-            await self.collection().replace_one({"_id": self.id}, self.model_dump(by_alias=True, exclude={"id"}))
-            return self
+            return await self.push_update()
+
+    async def push_update(self):
+        diff = self._get_state_diff()
+        await self.collection().update_one({"_id": self.id}, {"$set": diff})
+        return self
+
+    async def replace(self):
+        await self.collection().replace_one({"_id": self.id}, self._make_dump())
+        self._take_snapshot()
+        return self
 
     async def update(self, params) -> typing.Self:
         if not self.id:
@@ -207,7 +247,7 @@ class Model(BaseModel):
     async def delete(self):
         if not self.id:
             raise DoesNotExist
-        await self.collection().delete_one({'_id': self.id})
+        await self.collection().delete_one({"_id": self.id})
         self.id = None
 
     @classmethod

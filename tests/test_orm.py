@@ -1,19 +1,31 @@
 import asyncio
+import typing
 
-from mongomock_motor import AsyncMongoMockClient
 import pytest
+from mongomock_motor import AsyncMongoMockClient
+from pydantic import BaseModel, Field
 
-from morm import Database, Model, Index, DoesNotExist, AlreadyExists, DuplicateKeyError, ASC
+from morm import (
+    ASC,
+    AlreadyExists,
+    Database,
+    DoesNotExist,
+    DuplicateKeyError,
+    Index,
+    Model,
+)
 
 
 @pytest.fixture()
 def mock_mongoclient(mocker):
-    return mocker.patch('motor.motor_asyncio.AsyncIOMotorClient', AsyncMongoMockClient)
+    return mocker.patch("motor.motor_asyncio.AsyncIOMotorClient", AsyncMongoMockClient)
 
 
 def test_database_init(mocker):
     mock_client_called = mocker.Mock()
-    mock_client = mocker.patch('motor.motor_asyncio.AsyncIOMotorClient', return_value=mock_client_called)
+    mock_client = mocker.patch(
+        "motor.motor_asyncio.AsyncIOMotorClient", return_value=mock_client_called
+    )
 
     Database("test", name="fd", hello="World!")
 
@@ -23,7 +35,9 @@ def test_database_init(mocker):
 
 def test_database_decorator(mocker, mock_mongoclient):
     mock_db = mocker.Mock()
-    mocker.patch('motor.motor_asyncio.AsyncIOMotorClient.get_database', return_value=mock_db)
+    mocker.patch(
+        "motor.motor_asyncio.AsyncIOMotorClient.get_database", return_value=mock_db
+    )
 
     db = Database(name="test")
 
@@ -39,6 +53,7 @@ def test_database_decorator_not_model(mock_mongoclient):
     db = Database(name="test")
 
     with pytest.raises(TypeError):
+
         @db
         class Test:
             pass
@@ -51,9 +66,15 @@ def test_database_transaction(mocker):
     transaction.__aenter__ = mocker.AsyncMock()
     mock_mongo_session.start_transaction = mocker.Mock(return_value=transaction)
     mock_mongo_session_with = mocker.AsyncMock()
-    mock_mongo_session_with.__aenter__ = mocker.AsyncMock(return_value=mock_mongo_session)
-    mock_mongo_instance.start_session = mocker.AsyncMock(return_value=mock_mongo_session_with)
-    mocker.patch('motor.motor_asyncio.AsyncIOMotorClient', return_value=mock_mongo_instance)
+    mock_mongo_session_with.__aenter__ = mocker.AsyncMock(
+        return_value=mock_mongo_session
+    )
+    mock_mongo_instance.start_session = mocker.AsyncMock(
+        return_value=mock_mongo_session_with
+    )
+    mocker.patch(
+        "motor.motor_asyncio.AsyncIOMotorClient", return_value=mock_mongo_instance
+    )
 
     db = Database(name="test")
 
@@ -72,7 +93,9 @@ def test_database_transaction(mocker):
 
 def test_database_grid_fs(mock_mongoclient, mocker):
     mock_grid = mocker.Mock()
-    mock = mocker.patch('motor.motor_asyncio.AsyncIOMotorGridFSBucket', return_value=mock_grid)
+    mock = mocker.patch(
+        "motor.motor_asyncio.AsyncIOMotorGridFSBucket", return_value=mock_grid
+    )
 
     db = Database(name="test")
 
@@ -254,6 +277,36 @@ async def test_model_save_already_exists(mock_mongoclient):
 
 
 @pytest.mark.asyncio
+async def test_model_save_already_exists_diff(mock_mongoclient, mocker):
+    mock_update_one = mocker.AsyncMock()
+
+    db = Database(name="test")
+
+    class Inner(BaseModel):
+        test: str = Field(default="default")
+        flag: typing.Optional[bool] = Field(default=False)
+
+    @db
+    class TestModel(Model):
+        name: str
+        num: int
+
+        inner: Inner = Field(default_factory=Inner)
+
+    TestModel.collection().update_one = mock_update_one
+
+    obj = await TestModel(name="Test", num=1).create()
+
+    obj.name = "Hello World"
+    obj.inner.flag = True
+    await obj.save()
+
+    mock_update_one.assert_called_once_with(
+        {"_id": obj.id}, {"$set": {"name": "Hello World", "inner": {"flag": True}}}
+    )
+
+
+@pytest.mark.asyncio
 async def test_model_update(mock_mongoclient):
     db = Database(name="test")
 
@@ -372,5 +425,14 @@ def test_model_indexes(mock_mongoclient):
     with pytest.raises(DuplicateKeyError):
         asyncio.run(TestModel(name="Test").create())
 
-    assert asyncio.run(TestModel.collection().index_information()) == {'_id_': {'key': [('_id', 1)], 'v': 2}, 'name_1': {'key': [('name', 1),], 'unique': True, 'v': 2}}
+    assert asyncio.run(TestModel.collection().index_information()) == {
+        "_id_": {"key": [("_id", 1)], "v": 2},
+        "name_1": {
+            "key": [
+                ("name", 1),
+            ],
+            "unique": True,
+            "v": 2,
+        },
+    }
     assert asyncio.run(TestModel.count(name="Test")) == 1
