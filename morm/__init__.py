@@ -13,3 +13,6 @@ from morm.orm import (
     Model,
     ObjectId,
 )
+
+
+__version__ = "0.1.3"

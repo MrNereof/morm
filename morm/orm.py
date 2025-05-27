@@ -227,6 +227,7 @@ class Model(BaseModel):
     async def push_update(self):
         diff = self._get_state_diff()
         await self.collection().update_one({"_id": self.id}, {"$set": diff})
+        self._take_snapshot()
         return self
 
     async def replace(self):
