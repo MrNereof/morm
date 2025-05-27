@@ -19,6 +19,8 @@ jobs:
           isort .
 
       - uses: astral-sh/ruff-action@v3
+        with:
+          args: "--version"
       - run: ruff check --fix
       - run: ruff format
 
