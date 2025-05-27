@@ -25,12 +25,10 @@ jobs:
           python -m pip install --upgrade pip poetry
           poetry install --with test
 
-      - name: Run pytest
-        uses: pavelzw/pytest-action@v2
-        with:
-          verbose: true
-          emoji: true
-          job-summary: true
-          custom-arguments: '-q'
-          click-to-expand: true
-          report-title: 'Test Report'
+      - name: Test with pytest
+        run: |
+          poetry run coverage run -m pytest  -v -s
+
+      - name: Generate Coverage Report
+        run: |
+          poetry run coverage report -m
