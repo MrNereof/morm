@@ -1,4 +1,5 @@
 import asyncio
+import json
 import typing
 
 import pytest
@@ -430,3 +431,23 @@ def test_model_indexes(mock_mongoclient):
         },
     }
     assert asyncio.run(TestModel.count(name="Test")) == 1
+
+
+@pytest.mark.asyncio
+async def test_objectid_conversion(mock_mongoclient):
+    db = Database(name="test")
+
+    @db
+    class TestModel(Model):
+        name: str
+        num: int
+
+    obj = await TestModel(name="Test", num=1).create()
+
+    dump = json.loads(obj.model_dump_json())
+    assert dump == {"id":str(obj.id),"name":"Test","num":1}
+
+    assert TestModel(**dump) == obj
+
+
+

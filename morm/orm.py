@@ -4,6 +4,19 @@ import functools
 import typing
 from contextlib import asynccontextmanager
 
+
+import bson
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    PlainSerializer,
+    PrivateAttr,
+    WithJsonSchema,
+)
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import core_schema
 import bson
 import gridfs
 import pymongo
@@ -20,12 +33,36 @@ from pymongo.asynchronous.database import AsyncCollection, AsyncDatabase
 
 from morm.utils import recursive_diff
 
-ObjectId = typing.Annotated[
-    bson.ObjectId,
-    BeforeValidator(bson.ObjectId),
-    PlainSerializer(lambda x: str(x), return_type=str, when_used="json"),
-    WithJsonSchema({"type": "string"}, mode="serialization"),
-]
+
+class ObjectIdAnnotation:
+    @classmethod
+    def validate_object_id(cls, v: typing.Any, handler) -> bson.ObjectId:
+        if isinstance(v, bson.ObjectId):
+            return v
+
+        s = handler(v)
+        if bson.ObjectId.is_valid(s):
+            return bson.ObjectId(s)
+
+        raise ValueError("Invalid ObjectId")
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type, _handler
+    ) -> core_schema.CoreSchema:
+        assert source_type is bson.ObjectId
+        return core_schema.no_info_wrap_validator_function(
+            cls.validate_object_id,
+            core_schema.str_schema(),
+            serialization=core_schema.to_string_ser_schema(),
+        )
+
+    @classmethod
+    def __get_pydantic_json_schema__(cls, _core_schema, handler) -> JsonSchemaValue:
+        return handler(core_schema.str_schema())
+
+
+ObjectId = typing.Annotated[bson.ObjectId, ObjectIdAnnotation]
 
 
 class DatabaseException(Exception):
