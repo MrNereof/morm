@@ -257,14 +257,21 @@ async def test_model_save_not_exists(mocker, mock_mongoclient):
 async def test_model_save_already_exists(mock_mongoclient):
     db = Database(name="test")
 
+    class Inner(BaseModel):
+        test: str
+        flag: bool
+
     @db
     class TestModel(Model):
         name: str
         num: int
 
-    obj = await TestModel(name="Test", num=1).create()
+        inner: Inner = Field(default_factory=Inner)
+
+    obj = await TestModel(name="Test", num=1, inner={"test": "default", "flag": False}).create()
 
     obj.name = "Hello World"
+    obj.inner.flag = True
     await obj.save()
 
     obj_get = await TestModel.get(name="Hello World")
@@ -297,7 +304,7 @@ async def test_model_save_already_exists_diff(mock_mongoclient, mocker):
     await obj.save()
 
     mock_update_one.assert_called_once_with(
-        {"_id": obj.id}, {"$set": {"name": "Hello World", "inner": {"flag": True}}}
+        {"_id": obj.id}, {"$set": {"name": "Hello World", "inner.flag": True}}
     )
 
 

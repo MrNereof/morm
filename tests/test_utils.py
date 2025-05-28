@@ -24,8 +24,4 @@ def test_recursive_diff():
         "newest": "checkme",
     }
 
-    assert recursive_diff(prev, cur) == {
-        "name": "John",
-        "data": {"changed": "yep", "inner": {"new": "flag"}},
-        "newest": "checkme",
-    }
+    assert recursive_diff(prev, cur) == {'data.changed': 'yep', 'data.inner': {'new': 'flag'}, 'name': 'John', 'newest': 'checkme'}

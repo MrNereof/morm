@@ -9,7 +9,10 @@ def recursive_diff(
     for k, v in current.items():
         if v != prev.get(k):
             if isinstance(v, dict) and k in prev:
-                diff[k] = recursive_diff(prev[k], v)
+                embedding = recursive_diff(prev[k], v)
+                for ke, ve in embedding.items():
+                    new_key = f"{k}.{ke}"
+                    diff[new_key] = ve
             else:
                 diff[k] = v
 
