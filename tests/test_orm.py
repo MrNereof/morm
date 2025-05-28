@@ -35,9 +35,7 @@ def test_database_init(mocker):
 
 def test_database_decorator(mocker, mock_mongoclient):
     mock_db = mocker.Mock()
-    mocker.patch(
-        "pymongo.AsyncMongoClient.get_database", return_value=mock_db
-    )
+    mocker.patch("pymongo.AsyncMongoClient.get_database", return_value=mock_db)
 
     db = Database(name="test")
 
@@ -72,9 +70,7 @@ def test_database_transaction(mocker):
     mock_mongo_instance.start_session = mocker.Mock(
         return_value=mock_mongo_session_with
     )
-    mocker.patch(
-        "pymongo.AsyncMongoClient", return_value=mock_mongo_instance
-    )
+    mocker.patch("pymongo.AsyncMongoClient", return_value=mock_mongo_instance)
 
     db = Database(name="test")
 
@@ -93,9 +89,7 @@ def test_database_transaction(mocker):
 
 def test_database_grid_fs(mock_mongoclient, mocker):
     mock_grid = mocker.Mock()
-    mock = mocker.patch(
-        "gridfs.AsyncGridFS", return_value=mock_grid
-    )
+    mock = mocker.patch("gridfs.AsyncGridFS", return_value=mock_grid)
 
     db = Database(name="test")
 
