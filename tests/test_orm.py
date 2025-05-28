@@ -18,13 +18,13 @@ from morm import (
 
 @pytest.fixture()
 def mock_mongoclient(mocker):
-    return mocker.patch("motor.motor_asyncio.AsyncIOMotorClient", AsyncMongoMockClient)
+    return mocker.patch("pymongo.AsyncMongoClient", AsyncMongoMockClient)
 
 
 def test_database_init(mocker):
     mock_client_called = mocker.Mock()
     mock_client = mocker.patch(
-        "motor.motor_asyncio.AsyncIOMotorClient", return_value=mock_client_called
+        "pymongo.AsyncMongoClient", return_value=mock_client_called
     )
 
     Database("test", name="fd", hello="World!")
@@ -36,7 +36,7 @@ def test_database_init(mocker):
 def test_database_decorator(mocker, mock_mongoclient):
     mock_db = mocker.Mock()
     mocker.patch(
-        "motor.motor_asyncio.AsyncIOMotorClient.get_database", return_value=mock_db
+        "pymongo.AsyncMongoClient.get_database", return_value=mock_db
     )
 
     db = Database(name="test")
@@ -64,16 +64,16 @@ def test_database_transaction(mocker):
     mock_mongo_session = mocker.AsyncMock()
     transaction = mocker.AsyncMock()
     transaction.__aenter__ = mocker.AsyncMock()
-    mock_mongo_session.start_transaction = mocker.Mock(return_value=transaction)
+    mock_mongo_session.start_transaction = mocker.AsyncMock(return_value=transaction)
     mock_mongo_session_with = mocker.AsyncMock()
     mock_mongo_session_with.__aenter__ = mocker.AsyncMock(
         return_value=mock_mongo_session
     )
-    mock_mongo_instance.start_session = mocker.AsyncMock(
+    mock_mongo_instance.start_session = mocker.Mock(
         return_value=mock_mongo_session_with
     )
     mocker.patch(
-        "motor.motor_asyncio.AsyncIOMotorClient", return_value=mock_mongo_instance
+        "pymongo.AsyncMongoClient", return_value=mock_mongo_instance
     )
 
     db = Database(name="test")
@@ -84,17 +84,17 @@ def test_database_transaction(mocker):
 
     asyncio.run(some_function())
 
-    mock_mongo_instance.start_session.assert_awaited_once()
+    mock_mongo_instance.start_session.assert_called_once()
     mock_mongo_session_with.__aenter__.assert_called_once()
 
-    mock_mongo_session.start_transaction.assert_called_once()
+    mock_mongo_session.start_transaction.assert_awaited_once()
     transaction.__aenter__.assert_called_once()
 
 
 def test_database_grid_fs(mock_mongoclient, mocker):
     mock_grid = mocker.Mock()
     mock = mocker.patch(
-        "motor.motor_asyncio.AsyncIOMotorGridFSBucket", return_value=mock_grid
+        "gridfs.AsyncGridFS", return_value=mock_grid
     )
 
     db = Database(name="test")

@@ -5,7 +5,10 @@ import typing
 from contextlib import asynccontextmanager
 
 import bson
-import motor.motor_asyncio as motor
+from pymongo.asynchronous.database import AsyncDatabase, AsyncCollection
+import pymongo
+import gridfs
+
 from pydantic import (
     BaseModel,
     BeforeValidator,
@@ -42,7 +45,7 @@ class AlreadyExists(DatabaseException):
 
 class Database:
     def __init__(self, *args, name: typing.Optional[str] = None, **kwargs):
-        self.client = motor.AsyncIOMotorClient(*args, **kwargs)
+        self.client = pymongo.AsyncMongoClient(*args, **kwargs)
         self.db = self.client.get_database(name)
 
         self._jobs = []
@@ -67,8 +70,8 @@ class Database:
 
     @asynccontextmanager
     async def transaction(self):
-        async with await self.client.start_session() as s:
-            async with s.start_transaction():
+        async with self.client.start_session() as s:
+            async with await s.start_transaction():
                 yield
 
     def atomic(self, func):
@@ -80,9 +83,9 @@ class Database:
         return wrapper
 
     @property
-    def grid_fs(self) -> motor.AsyncIOMotorGridFSBucket:
+    def grid_fs(self) -> gridfs.AsyncGridFS:
         if self._grid_fs is None:
-            self._grid_fs = motor.AsyncIOMotorGridFSBucket(self.db)
+            self._grid_fs = gridfs.AsyncGridFS(self.db)
         return self._grid_fs
 
 
@@ -103,8 +106,8 @@ class Model(BaseModel):
         COLLECTION_NAME: str
         INDEXES: list[Index]
 
-    _db: typing.ClassVar[motor.AsyncIOMotorDatabase]
-    _collection: typing.ClassVar[motor.AsyncIOMotorCollection]
+    _db: typing.ClassVar[AsyncDatabase]
+    _collection: typing.ClassVar[AsyncCollection]
 
     _state_snapshot: typing.Optional[dict[str, typing.Any]] = PrivateAttr(default=None)
 
@@ -134,14 +137,14 @@ class Model(BaseModel):
         return getattr(cls.Meta, "COLLECTION_NAME", None) or cls.__name__.lower()
 
     @classmethod
-    def db(cls) -> motor.AsyncIOMotorDatabase:
+    def db(cls) -> AsyncDatabase:
         if hasattr(cls, "_db"):
             return cls._db
 
         raise RuntimeError("No Database connected!")
 
     @classmethod
-    def collection(cls) -> motor.AsyncIOMotorCollection:
+    def collection(cls) -> AsyncCollection:
         if not hasattr(cls, "_collection"):
             cls._collection = cls.db().get_collection(cls.collection_name())
 
