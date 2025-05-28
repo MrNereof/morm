@@ -445,9 +445,6 @@ async def test_objectid_conversion(mock_mongoclient):
     obj = await TestModel(name="Test", num=1).create()
 
     dump = json.loads(obj.model_dump_json())
-    assert dump == {"id":str(obj.id),"name":"Test","num":1}
+    assert dump == {"id": str(obj.id), "name": "Test", "num": 1}
 
     assert TestModel(**dump) == obj
-
-
-
