@@ -15,11 +15,8 @@ from pydantic import (
     PrivateAttr,
     WithJsonSchema,
 )
-from pydantic.json_schema import JsonSchemaValue
-from pydantic_core import core_schema
 
 from morm.utils import recursive_diff
-
 
 ObjectId = typing.Annotated[
     bson.ObjectId,
