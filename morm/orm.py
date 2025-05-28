@@ -225,12 +225,16 @@ class Model(BaseModel):
             return await self.push_update()
 
     async def push_update(self):
+        if not self.id:
+            raise DoesNotExist
         diff = self._get_state_diff()
         await self.collection().update_one({"_id": self.id}, {"$set": diff})
         self._take_snapshot()
         return self
 
     async def replace(self):
+        if not self.id:
+            raise DoesNotExist
         await self.collection().replace_one({"_id": self.id}, self._make_dump())
         self._take_snapshot()
         return self
