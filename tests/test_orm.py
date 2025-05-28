@@ -268,7 +268,9 @@ async def test_model_save_already_exists(mock_mongoclient):
 
         inner: Inner = Field(default_factory=Inner)
 
-    obj = await TestModel(name="Test", num=1, inner={"test": "default", "flag": False}).create()
+    obj = await TestModel(
+        name="Test", num=1, inner={"test": "default", "flag": False}
+    ).create()
 
     obj.name = "Hello World"
     obj.inner.flag = True
