@@ -1,6 +1,6 @@
 [project]
 name = "morm-python"
-version = "0.2.0"
+version = "0.2.1"
 description = "Asynchronous Mongo ORM"
 authors = [
     {name = "MrNereof",email = "mrnereof@gmail.com"}
