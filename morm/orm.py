@@ -164,6 +164,7 @@ class Model(BaseModel):
         obj = await cls.collection().find_one(params)
         if not obj:
             raise DoesNotExist
+
         return cls(**obj)
 
     @classmethod
@@ -171,6 +172,7 @@ class Model(BaseModel):
         cursor = cls.collection().find(params)
         if _filter is not None:
             _filter(cursor)
+
         return [cls(**e) async for e in cursor]
 
     @classmethod
@@ -180,10 +182,13 @@ class Model(BaseModel):
     async def create(self) -> typing.Self:
         if self.id:
             raise AlreadyExists
+
         data = self._make_dump()
         new = await self.collection().insert_one(data)
         self.id = new.inserted_id
+
         self._take_snapshot()
+
         return self
 
     async def save(self) -> typing.Self:
@@ -195,21 +200,28 @@ class Model(BaseModel):
     async def push_update(self):
         if not self.id:
             raise DoesNotExist
+
         diff = self._get_state_diff()
         await self.collection().update_one({"_id": self.id}, {"$set": diff})
+
         self._take_snapshot()
+
         return self
 
     async def replace(self):
         if not self.id:
             raise DoesNotExist
+
         await self.collection().replace_one({"_id": self.id}, self._make_dump())
+
         self._take_snapshot()
+
         return self
 
     async def update(self, params) -> typing.Self:
         if not self.id:
             raise DoesNotExist
+
         await self.collection().update_one({"_id": self.id}, params)
         return await self.get(_id=self.id)
 
@@ -220,6 +232,7 @@ class Model(BaseModel):
     async def delete(self):
         if not self.id:
             raise DoesNotExist
+
         await self.collection().delete_one({"_id": self.id})
         self.id = None
 
