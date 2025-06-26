@@ -177,9 +177,12 @@ class Model(BaseModel):
     def as_base_cls(cls) -> typing.Type[BaseModel]:
         if not hasattr(cls, "_base_model"):
             fields = {
-                name: (field.annotation, field.default if field.default is not None else ...)
+                name: (
+                    field.annotation,
+                    field.default if field.default is not None else ...,
+                )
                 for name, field in cls.model_fields.items()
-                if name != 'id'
+                if name != "id"
             }
 
             base_cls = create_model(f"{cls.__name__}Base", **fields)
@@ -200,10 +203,7 @@ class Model(BaseModel):
 
     def as_base(self):
         base_cls = self.as_base_cls()
-        return base_cls(**{
-            k: v for k, v in self.model_dump().items()
-            if k != "id"
-        })
+        return base_cls(**{k: v for k, v in self.model_dump().items() if k != "id"})
 
     def __hash__(self):
         return self.id.__hash__()
