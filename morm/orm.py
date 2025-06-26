@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 import bson
 import gridfs
 import pymongo
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, create_model
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema
 from pymongo.asynchronous.database import AsyncCollection, AsyncDatabase
@@ -126,6 +126,8 @@ class Model(BaseModel):
     _db: typing.ClassVar[AsyncDatabase]
     _collection: typing.ClassVar[AsyncCollection]
 
+    _base_model: typing.ClassVar[typing.Type[BaseModel]]
+
     _state_snapshot: typing.Optional[dict[str, typing.Any]] = PrivateAttr(default=None)
 
     id: typing.Optional[ObjectId] = Field(alias="_id", default=None)
@@ -170,6 +172,38 @@ class Model(BaseModel):
     @classmethod
     def indexes(cls):
         return getattr(cls.Meta, "INDEXES", [])
+
+    @classmethod
+    def as_base_cls(cls) -> typing.Type[BaseModel]:
+        if not hasattr(cls, "_base_model"):
+            fields = {
+                name: (field.annotation, field.default if field.default is not None else ...)
+                for name, field in cls.model_fields.items()
+                if name != 'id'
+            }
+
+            base_cls = create_model(f"{cls.__name__}Base", **fields)
+            base_cls._original_model = cls
+
+            @classmethod
+            def as_model_cls(clss):
+                return cls
+
+            def as_model(self):
+                return cls(**self.model_dump())
+
+            base_cls.as_model_cls = as_model_cls
+            base_cls.as_model = as_model
+
+            cls._base_model = base_cls
+        return cls._base_model
+
+    def as_base(self):
+        base_cls = self.as_base_cls()
+        return base_cls(**{
+            k: v for k, v in self.model_dump().items()
+            if k != "id"
+        })
 
     def __hash__(self):
         return self.id.__hash__()

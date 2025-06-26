@@ -443,6 +443,52 @@ def test_model_indexes(mock_mongoclient):
 
 
 @pytest.mark.asyncio
+async def test_model_as_base(mock_mongoclient):
+    db = Database(name="test")
+
+    @db
+    class TestModel(Model):
+        name: str
+        num: int
+
+    ModelBase = TestModel.as_base_cls()
+
+    assert str(ModelBase.model_fields) == "{'name': FieldInfo(annotation=str, required=True), 'num': FieldInfo(annotation=int, required=True)}"
+
+    obj = await TestModel(name="Test", num=1).create()
+
+    assert isinstance(obj.as_base(), ModelBase)
+    assert obj.as_base().model_dump() == {'name': 'Test', 'num': 1}
+
+
+@pytest.mark.asyncio
+async def test_model_base_as_model(mock_mongoclient):
+    db = Database(name="test")
+
+    @db
+    class TestModel(Model):
+        name: str
+        num: int
+
+    ModelBase = TestModel.as_base_cls()
+
+    OriginalCls = ModelBase.as_model_cls()
+
+    assert OriginalCls == TestModel
+
+    obj = ModelBase(name="Test", num=1)
+
+    model_obj = obj.as_model()
+
+    assert isinstance(model_obj, TestModel)
+    assert model_obj.model_dump() == {'id': None, 'name': 'Test', 'num': 1}
+
+    await model_obj.create()
+
+    assert model_obj.id is not None
+
+
+@pytest.mark.asyncio
 async def test_objectid_conversion(mock_mongoclient):
     db = Database(name="test")
 
