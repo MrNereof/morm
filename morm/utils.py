@@ -11,9 +11,8 @@ def recursive_diff(
     for k, v in current.items():
         prev_value = prev.get(k)
         if v != prev_value:
-            if isinstance(v, dict):
-                prev_nested = prev_value if isinstance(prev_value, dict) else {}
-                embedding = recursive_diff(prev_nested, v)
+            if isinstance(v, dict) and isinstance(prev_value, dict):
+                embedding = recursive_diff(prev_value, v)
                 for ke, ve in embedding.items():
                     new_key = f"{k}.{ke}"
                     diff[new_key] = ve
