@@ -30,3 +30,15 @@ def test_recursive_diff():
         "name": "John",
         "newest": "checkme",
     }
+
+
+def test_recursive_diff_none_to_dict():
+    prev = {"sub": None}
+    curr = {"sub": {"type": "pro", "pending": False}}
+    assert recursive_diff(prev, curr) == {"sub.type": "pro", "sub.pending": False}
+
+
+def test_recursive_diff_scalar_to_dict():
+    prev = {"x": 1}
+    curr = {"x": {"a": 2}}
+    assert recursive_diff(prev, curr) == {"x.a": 2}
